@@ -13,7 +13,7 @@ const PROJECTS = [
     tags: ['FLASK', 'LINKEDIN API', 'MYSQL', 'React'],
     inProgress: false,
     image: '/images/linkedin-ai.png',
-    link: 'https://github.com/Nisxzn/LinkedIn-Post-Automation',
+    link: '',
     reverse: false
   },
   {
@@ -24,7 +24,7 @@ const PROJECTS = [
     tags: ['RAG', 'OLLAMA', 'LANGCHAIN', 'REACT'],
     inProgress: false,
     image: '/images/fetchr-rag.png',
-    link: 'https://github.com/Nisxzn/Fetchr',
+    link: '',
     reverse: true
   },
   {
@@ -35,7 +35,7 @@ const PROJECTS = [
     tags: ['NEXT.JS', 'TYPESCRIPT', 'OLLAMA', 'RAG'],
     inProgress: true,
     image: '/images/luna-ai.png',
-    link: 'https://github.com/Nisxzn/Luna-AI-P-4',
+    link: '',
     reverse: false
   }
 ];
