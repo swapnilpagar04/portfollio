@@ -1,277 +1,177 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
+import React, { useEffect, useRef } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-const DEFAULT_IMAGES = [
-  { src: '/images/java.png' },
-  { src: '/images/python.png' },
-  { src: '/images/cpp.png' },
-  { src: '/images/javascript.png' },
-  { src: '/images/tailwind.png' },
-  { src: '/images/react.png' },
-  { src: '/images/postgres.png' },
-  { src: '/images/mongodb.png' },
-  { src: '/images/Git.png' }
+gsap.registerPlugin(ScrollTrigger);
+
+const DEFAULT_LOGOS = [
+  { src: '/images/java.png', alt: 'Java' },
+  { src: '/images/python.png', alt: 'Python' },
+  { src: '/images/cpp.png', alt: 'C++' },
+  { src: '/images/javascript.png', alt: 'JavaScript' },
+  { src: '/images/tailwind.png', alt: 'Tailwind CSS' },
+  { src: '/images/react.png', alt: 'React' },
+  { src: '/images/postgres.png', alt: 'PostgreSQL' },
+  { src: '/images/mongodb.png', alt: 'MongoDB' },
+  { src: '/images/Git.png', alt: 'Git' }
 ];
 
-const DEFAULT_HEADINGS = ['Languages', 'Frameworks', 'Database', 'Version Control'];
-const DEFAULT_STOPS = [0, 4, 6, 8];
-
-const OFFSETS = [
-  { x: -1.8, y: 0.8, rot: -0.08 },
-  { x: 1.9, y: 1.0, rot: 0.07 },
-  { x: -2.0, y: -0.9, rot: -0.06 },
-  { x: 2.0, y: -0.8, rot: 0.09 },
-  { x: -1.3, y: 1.2, rot: 0.05 },
-  { x: 0.3, y: -1.3, rot: -0.04 },
-  { x: 1.4, y: 1.1, rot: 0.11 },
-  { x: -0.8, y: -1.1, rot: -0.05 },
-  { x: 1.1, y: -0.7, rot: 0.08 }
-];
-
-const clamp = (val, min, max) => Math.max(min, Math.min(max, val));
-
-export default function InfiniteGallery({
-  images = DEFAULT_IMAGES,
-  headings = DEFAULT_HEADINGS,
-  headingStops = DEFAULT_STOPS,
-  zSpacing = 6
-}) {
+export default function InfiniteGallery({ images = DEFAULT_LOGOS }) {
   const containerRef = useRef(null);
-  const viewportRef = useRef(null);
-  const canvasRef = useRef(null);
-  const headingRefs = useRef([]);
-  const [isMobile, setIsMobile] = useState(false);
-  const scrollProgress = useRef(0);
+  const trackRef = useRef(null);
 
-  // Responsive state
+  const displayItems = [...images, ...images];
+
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-  const vhPerImage = isMobile ? 85 : 68;
-  const planeSize = isMobile ? [1.8, 1.8] : [2.35, 2.35];
-
-  // Three.js Scene Setup & Animation
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      alpha: true,
-      antialias: false,
-      powerPreference: 'high-performance'
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-
-    // Scene & Camera
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
-    camera.position.set(0, 0, 9);
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1);
-    scene.add(ambientLight);
-
-    // Texture Loader & Meshes
-    const textureLoader = new THREE.TextureLoader();
-    const planeGeometry = new THREE.PlaneGeometry(planeSize[0], planeSize[1]);
-    const meshes = [];
-
-    images.forEach((img, idx) => {
-      const offset = OFFSETS[idx % OFFSETS.length];
-      const texture = textureLoader.load(img.src);
-      texture.generateMipmaps = true;
-
-      const material = new THREE.MeshBasicMaterial({
-        map: texture,
-        transparent: true,
-        opacity: 0,
-        toneMapped: false
-      });
-
-      const mesh = new THREE.Mesh(planeGeometry, material);
-      mesh.position.set(offset.x, offset.y, -idx * zSpacing);
-      mesh.rotation.z = offset.rot;
-
-      scene.add(mesh);
-      meshes.push(mesh);
-    });
-
-    const totalZ = (images.length - 1) * zSpacing;
-    const maxCameraTravel = totalZ + 14;
-
-    // Resize handler
-    const handleResize = () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    };
-    window.addEventListener('resize', handleResize);
-
-    // Animation / Render loop
-    let frameId;
-    const render = () => {
-      const p = scrollProgress.current;
-
-      // Move camera along Z axis
-      camera.position.z = 9 - p * maxCameraTravel;
-
-      // Update mesh opacities
-      meshes.forEach((mesh, idx) => {
-        const meshZ = -idx * zSpacing;
-        const dist = camera.position.z - meshZ;
-        // Fade in as camera nears 9 units away, fade out as it flies past
-        const opacity = clamp(1 - Math.abs(dist - 9) / 4, 0, 1);
-        mesh.material.opacity = opacity;
-      });
-
-      renderer.render(scene, camera);
-      frameId = requestAnimationFrame(render);
-    };
-
-    frameId = requestAnimationFrame(render);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener('resize', handleResize);
-      meshes.forEach((m) => {
-        m.geometry.dispose();
-        if (m.material.map) m.material.map.dispose();
-        m.material.dispose();
-      });
-      renderer.dispose();
-    };
-  }, [images, zSpacing, isMobile]);
-
-  // Scroll pinning & progress tracking
-  useEffect(() => {
-    const totalZ = (images.length - 1) * zSpacing;
-    const maxTravel = totalZ + 14;
-    const fadeWindow = ((isMobile ? 1.8 : 1.2) * zSpacing) / maxTravel;
-
-    const onScroll = () => {
+    const ctx = gsap.context(() => {
+      const track = trackRef.current;
       const container = containerRef.current;
-      const viewport = viewportRef.current;
-      if (!container || !viewport) return;
+      if (!track || !container) return;
 
-      const rect = container.getBoundingClientRect();
-      const scrollableHeight = rect.height - window.innerHeight;
-      const progress = scrollableHeight > 0 ? clamp(-rect.top / scrollableHeight, 0, 1) : 0;
-      scrollProgress.current = progress;
+      const getScrollAmount = () => {
+        return Math.max(0, track.scrollWidth - window.innerWidth);
+      };
 
-      // Sticky pinning logic
-      if (rect.top > 0) {
-        viewport.style.position = 'absolute';
-        viewport.style.top = '0px';
-        viewport.style.bottom = '';
-      } else if (rect.bottom < window.innerHeight) {
-        viewport.style.position = 'absolute';
-        viewport.style.top = '';
-        viewport.style.bottom = '0px';
-      } else {
-        viewport.style.position = 'fixed';
-        viewport.style.top = '0px';
-        viewport.style.bottom = '';
-      }
-
-      // Update heading opacities
-      headingRefs.current.forEach((el, idx) => {
-        if (!el) return;
-        const stopZ = (headingStops[idx] ?? idx) * zSpacing;
-        const targetP = clamp(stopZ / maxTravel, 0, 1);
-        const opacity = clamp(1 - Math.abs(progress - targetP) / fadeWindow, 0, 1);
-        el.style.opacity = String(opacity);
+      gsap.to(track, {
+        x: () => -getScrollAmount(),
+        ease: 'none',
+        scrollTrigger: {
+          trigger: container,
+          start: 'top 85%',
+          end: 'bottom 15%',
+          scrub: 1.2,
+          invalidateOnRefresh: true
+        }
       });
-    };
+    }, containerRef);
 
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    onScroll();
+    // Refresh ScrollTrigger once DOM layout stabilizes
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 150);
 
     return () => {
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
+      clearTimeout(timer);
+      ctx.revert();
     };
-  }, [images.length, zSpacing, headingStops, isMobile]);
+  }, [images]);
 
   return (
-    <div
+    <section
       ref={containerRef}
       style={{
         position: 'relative',
-        height: `${(images.length + 1) * vhPerImage}vh`,
+        width: '100%',
+        padding: '24px 0 64px',
         background: '#000000',
+        overflow: 'hidden',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         zIndex: 2
       }}
     >
+      {/* Edge gradient fade masks for smooth entrance and exit */}
       <div
-        ref={viewportRef}
         style={{
           position: 'absolute',
           top: 0,
           left: 0,
-          height: '100vh',
-          width: '100%',
-          overflow: 'hidden'
+          bottom: 0,
+          width: '120px',
+          background: 'linear-gradient(to right, #000000 25%, transparent 100%)',
+          zIndex: 3,
+          pointerEvents: 'none'
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          bottom: 0,
+          width: '120px',
+          background: 'linear-gradient(to left, #000000 25%, transparent 100%)',
+          zIndex: 3,
+          pointerEvents: 'none'
+        }}
+      />
+
+      {/* Horizontal scrolling logo track */}
+      <div
+        ref={trackRef}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '28px',
+          padding: '0 80px',
+          width: 'max-content',
+          willChange: 'transform'
         }}
       >
-        {/* Three.js Canvas */}
-        <canvas
-          ref={canvasRef}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            display: 'block',
-            pointerEvents: 'none'
-          }}
-        />
-
-        {/* Headings Overlay */}
-        {headings.map((heading, idx) => (
+        {displayItems.map((item, idx) => (
           <div
             key={idx}
+            className="logo-card"
             style={{
-              position: 'absolute',
-              inset: 0,
+              width: '190px',
+              height: '190px',
+              flexShrink: 0,
+              background: 'rgba(255, 255, 255, 0.025)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '20px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              pointerEvents: 'none'
+              padding: '28px',
+              transition:
+                'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s, background-color 0.4s, box-shadow 0.4s',
+              cursor: 'pointer'
             }}
           >
-            <h3
-              ref={(el) => {
-                headingRefs.current[idx] = el;
-              }}
+            <img
+              src={item.src}
+              alt={item.alt || ''}
+              loading="lazy"
               style={{
-                fontFamily: 'var(--font-sofia), system-ui, sans-serif',
-                fontWeight: 700,
-                fontSize: 'clamp(48px, 12vw, 96px)',
-                lineHeight: 1,
-                margin: 0,
-                color: '#FFFFFF',
-                textAlign: 'center',
-                padding: '0 24px',
-                opacity: 0,
-                willChange: 'opacity',
-                textShadow: '0 4px 24px rgba(0,0,0,0.6)'
+                maxWidth: '90px',
+                maxHeight: '90px',
+                width: 'auto',
+                height: 'auto',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 4px 16px rgba(0, 0, 0, 0.5))',
+                userSelect: 'none',
+                pointerEvents: 'none',
+                transition: 'transform 0.4s ease'
               }}
-            >
-              {heading}
-            </h3>
+            />
           </div>
         ))}
       </div>
-    </div>
+
+      <style>{`
+        .logo-card:hover {
+          transform: translateY(-6px) scale(1.04);
+          background-color: rgba(255, 255, 255, 0.06) !important;
+          border-color: rgba(255, 255, 255, 0.22) !important;
+          box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.6), 0 0 24px rgba(255, 255, 255, 0.05);
+        }
+        .logo-card:hover img {
+          transform: scale(1.08);
+        }
+        @media (max-width: 768px) {
+          .logo-card {
+            width: 150px !important;
+            height: 150px !important;
+            padding: 20px !important;
+            border-radius: 16px !important;
+          }
+          .logo-card img {
+            max-width: 70px !important;
+            max-height: 70px !important;
+          }
+        }
+      `}</style>
+    </section>
   );
 }

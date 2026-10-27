@@ -190,14 +190,14 @@ export default function AboutSection() {
           position: 'relative',
           zIndex: 1,
           background: '#000000',
-          minHeight: '100vh'
+          minHeight: 'auto'
         }}
       >
         <div
           style={{
             maxWidth: '1000px',
             margin: '0 auto',
-            padding: '120px 64px',
+            padding: '120px 64px 32px',
             background: '#000000'
           }}
         >
@@ -354,7 +354,7 @@ export default function AboutSection() {
               lineHeight: 1.45,
               color: '#FFFFFF',
               maxWidth: '550px',
-              margin: '0 0 100px',
+              margin: '0 0 50px',
               position: 'relative',
               left: '650px',
               top: '-100px',
